@@ -1,0 +1,188 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Alumnos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- CSS: Bootstrap y DataTables -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+
+<div class="container">
+  <h3 class="mb-3">Alumnos</h3>
+  <!-- Mensajes de éxito/error -->
+  <div id="msg" class="alert d-none" role="alert"></div>
+
+  <!-- Botón: abre modal de alta -->
+  <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalForm">+ Nuevo Alumno</button>
+
+  <!-- Tabla -->
+  <table id="tablaAlumnos" class="display table table-striped" style="width:100%">
+    <thead>
+      <tr>
+        <th>ID</th><th>Nombre</th><th>DNI</th><th>Fecha Nac.</th><th>Acciones</th>
+      </tr>
+    </thead>
+  </table>
+</div>
+
+<!-- Modal con formulario (crear/editar) -->
+<div class="modal fade" id="modalForm" tabindex="-1" aria-labelledby="modalFormLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="formAlumno" class="modal-content">
+      {% csrf_token %}
+      <input type="hidden" name="id" value="">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalFormLabel">Alumno</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Nombre</label>
+          <input type="text" name="nombre" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">DNI</label>
+          <input type="text" name="dni" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Fecha de nacimiento</label>
+          <input type="date" name="fecha_nac" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- JS: jQuery, Bootstrap, DataTables -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+// Función para obtener token CSRF de la cookie
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// Inicializar DataTable
+const tabla = $('#tablaAlumnos').DataTable({
+  ajax: "{% url 'alumnos_data' %}",
+  columns: [
+    { data: 'id' },
+    { data: 'nombre' },
+    { data: 'dni' },
+    { data: 'fecha_nac' },
+    {
+      data: null,
+      orderable: false,
+      render: function(row) {
+        return `
+         <button class="btn btn-sm btn-info btn-editar" data-id="${row.id}"
+                    data-nombre="${row.nombre}" data-dni="${row.dni}"
+                    data-fecha="${row.fecha_nac}">Editar</button>
+            <button class="btn btn-sm btn-danger btn-borrar" data-id="${row.id}">Eliminar</button>
+         `;
+      }
+    }
+  ]
+});
+
+// Mostrar mensajes flotantes
+function showMsg(tipo, texto) {
+  const msgDiv = $('#msg');
+  msgDiv.removeClass('d-none alert-success alert-danger')
+    .addClass('alert-' + tipo)
+    .text(texto);
+  setTimeout(() => { msgDiv.addClass('d-none'); }, 2500);
+}
+
+// Al abrir modal: preparar nuevo o editar
+$('#modalForm').on('show.bs.modal', function (event) {
+  const button = $(event.relatedTarget); // botón que abre el modal
+  const id = button.data('id');
+  const modal = $(this);
+  modal.find('input[name="id"]').val('');
+  modal.find('form')[0].reset();
+  if (id) {
+    // rellenar datos para edición
+    modal.find('input[name="id"]').val(id);
+    modal.find('input[name="nombre"]').val(button.data('nombre'));
+    modal.find('input[name="dni"]').val(button.data('dni'));
+    modal.find('input[name="fecha_nac"]').val(button.data('fecha'));
+  }
+});
+
+// Enviar formulario (crear o actualizar)
+$('#formAlumno').on('submit', function(e) {
+  e.preventDefault();
+  $.ajax({
+    url: "{% url 'alumno_guardar' %}",
+    type: 'POST',
+    data: $(this).serialize(),
+    headers: { 'X-CSRFToken': csrftoken },
+    success: function(resp) {
+      $('#modalForm').modal('hide');
+      showMsg('success', resp.msg || 'Guardado correctamente');
+      tabla.ajax.reload(null, false); // recargar tabla sin resetear paginación
+    },
+    error: function(xhr) {
+      const msg = (xhr.responseJSON && xhr.responseJSON.msg) ? xhr.responseJSON.msg : 'Error al guardar';
+      showMsg('danger', msg);
+    }
+  });
+});
+
+
+// Evento editar (abre modal con datos)
+$('#tablaAlumnos').on('click', '.btn-editar', function() {
+  const btn = $(this);
+  $('#modalForm').modal('show')
+    .find('input[name="id"]').val(btn.data('id'));
+  $('#formAlumno input[name="nombre"]').val(btn.data('nombre'));
+  $('#formAlumno input[name="dni"]').val(btn.data('dni'));
+  $('#formAlumno input[name="fecha_nac"]').val(btn.data('fecha'));
+});
+
+// Borrado lógico
+$('#tablaAlumnos').on('click', '.btn-borrar', function() {
+  const id = $(this).data('id');
+  if(confirm('¿Desea eliminar este alumno?')) {
+    $.ajax({
+      url: `/alumnos/eliminar/${id}/`,
+      type: 'POST',
+      headers: { 'X-CSRFToken': csrftoken },
+      success: function(resp) {
+        showMsg('success', resp.msg || 'Alumno eliminado');
+        tabla.ajax.reload(null, false);
+      },
+      error: function(xhr) {
+        const msg = (xhr.responseJSON && xhr.responseJSON.msg) ? xhr.responseJSON.msg : 'Error al eliminar';
+        showMsg('danger', msg);
+      }
+    });
+  }
+});
+</script>
+
+</body>
+</html>

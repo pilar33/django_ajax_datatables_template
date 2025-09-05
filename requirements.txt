@@ -1,0 +1,2 @@
+Django==4.2.15
+mysqlclient==2.2.4  # opcional (usar si conectan MySQL)
