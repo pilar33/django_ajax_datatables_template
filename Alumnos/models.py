@@ -15,4 +15,4 @@ class Alumno(models.Model):
         verbose_name = 'Alumno'
         verbose_name_plural = 'Alumnos'
 
-# iEstado controla el borrado lógico: sólo se mostrarán los alumnos con iEstado=True.
+# iEstado controla el borrado lógico: sólo se mostrarán los alumnos con iEstado=True

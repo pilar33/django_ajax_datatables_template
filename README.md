@@ -32,3 +32,4 @@ python manage.py runserver
 - `/pacientes/data/` → JSON para DataTables
 - `/pacientes/crear/` → POST crear
 - `/pacientes/eliminar/<id>/` → POST eliminar
+# django_ajax_datatables_template_conAuditoria
