@@ -1,2 +1,10 @@
+asgiref==3.9.1
 Django==4.2.15
-mysqlclient==2.2.4  # opcional (usar si conectan MySQL)
+django-cors-headers==4.8.0
+django-filter==25.1
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
+mysqlclient==2.2.4
+PyJWT==2.10.1
+sqlparse==0.5.3
+tzdata==2025.2
